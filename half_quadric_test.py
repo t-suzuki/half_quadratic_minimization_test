@@ -1,15 +1,14 @@
+#!env python
 import numpy as np
 import numpy.fft
 import scipy.misc
 import scipy.ndimage
 import matplotlib.pyplot as plt
 
-def test_naive_inverse_problem_with_noise():
-    # prepare image
-    img = scipy.misc.lena()
-    img = scipy.ndimage.zoom(img, 1.0/16.0) / 255.0
-    print(img.shape)
-    print(img.min(), img.max())
+def make_D_eye(h, w):
+    return np.eye(h*w)
+
+def test_naive_inverse_problem_with_noise(img, make_D_func=make_D_eye):
     N = np.product(img.shape)
     h, w = img.shape
 
@@ -49,21 +48,27 @@ def test_naive_inverse_problem_with_noise():
     # Tikhnov regularization: minimize 1/2 ||Ax-y||_2^2 + beta*||Dx||_2^2
     # => (A'A + beta D'D)x = A'y
     beta = 0.01
-    D = np.eye(N)
+    D = make_D_func(h, w)
     img_blur_noise_regularization_recover = solve2d(np.dot(A.T, A) + beta*np.dot(D.T, D), np.dot(A.T, img_blur_noise.ravel()).reshape(img.shape))
 
     fig, axs = plt.subplots(2, 5, figsize=(13, 5))
-    ax = axs[0, 0]; ax.imshow(img, cmap='gray', vmin=0, vmax=1); ax.set_title('org')
-    ax = axs[0, 1]; ax.imshow(img_blur, cmap='gray', vmin=0, vmax=1); ax.set_title('blur')
-    ax = axs[0, 2]; ax.imshow(img_recover, cmap='gray', vmin=0, vmax=1); ax.set_title('blur+deconv')
-    ax = axs[0, 3]; ax.imshow(np.abs(img_recover - img), cmap='gray', vmin=-1, vmax=1); ax.set_title('diff')
+    ax = axs[0, 0]; ax.imshow(img, cmap='gray', vmin=0, vmax=1, interpolation='nearest'); ax.set_title('org')
+    ax = axs[0, 1]; ax.imshow(img_blur, cmap='gray', vmin=0, vmax=1, interpolation='nearest'); ax.set_title('blur')
+    ax = axs[0, 2]; ax.imshow(img_recover, cmap='gray', vmin=0, vmax=1, interpolation='nearest'); ax.set_title('blur+deconv')
+    ax = axs[0, 3]; ax.imshow(np.abs(img_recover - img), cmap='cool', vmin=-1, vmax=1, interpolation='nearest'); ax.set_title('diff')
     fig.delaxes(axs[0, 4])
-    ax = axs[1, 0]; ax.imshow(img_blur_noise, cmap='gray', vmin=0, vmax=1); ax.set_title(r'blur+noise($\sigma={:.2e}$)'.format(sigma))
-    ax = axs[1, 1]; ax.imshow(img_blur_noise_recover, cmap='gray', vmin=0, vmax=1); ax.set_title('blur+noise+recover')
-    ax = axs[1, 2]; ax.imshow(np.abs(img_blur_noise_recover - img), cmap='gray', vmin=-1, vmax=1); ax.set_title('diff')
-    ax = axs[1, 3]; ax.imshow(img_blur_noise_regularization_recover, cmap='gray', vmin=0, vmax=1); ax.set_title(r'Tikhnov($\beta={:.2e}$)'.format(beta))
-    ax = axs[1, 4]; ax.imshow(np.abs(img_blur_noise_regularization_recover - img), cmap='gray', vmin=-1, vmax=1); ax.set_title('Tikhnov diff')
+    ax = axs[1, 0]; ax.imshow(img_blur_noise, cmap='gray', vmin=0, vmax=1, interpolation='nearest'); ax.set_title(r'blur+noise($\sigma={:.2e}$)'.format(sigma))
+    ax = axs[1, 1]; ax.imshow(img_blur_noise_recover, cmap='gray', vmin=0, vmax=1, interpolation='nearest'); ax.set_title('blur+noise+recover')
+    ax = axs[1, 2]; ax.imshow(np.abs(img_blur_noise_recover - img), cmap='cool', vmin=-1, vmax=1, interpolation='nearest'); ax.set_title('diff')
+    ax = axs[1, 3]; ax.imshow(img_blur_noise_regularization_recover, cmap='gray', vmin=0, vmax=1, interpolation='nearest'); ax.set_title(r'Tikhnov($\beta={:.2e}$)'.format(beta))
+    ax = axs[1, 4]; ax.imshow(np.abs(img_blur_noise_regularization_recover - img), cmap='cool', vmin=-1, vmax=1, interpolation='nearest'); ax.set_title('Tikhnov diff')
 
 if __name__=='__main__':
-    test_naive_inverse_problem_with_noise()
+    # prepare image
+    img = scipy.misc.lena()
+    img = scipy.ndimage.zoom(img, 1.0/16.0) / 255.0
+    print(img.shape)
+    print(img.min(), img.max())
+
+    test_naive_inverse_problem_with_noise(img, make_D_eye)
     plt.show()
