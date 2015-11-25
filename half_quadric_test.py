@@ -1,4 +1,8 @@
 #!env python
+# reference:
+#  - http://www.math.hkbu.edu.hk/genearoundtheworld/pdf/rChan.pdf
+#  - http://www.math.cuhk.edu.hk/~rchan/paper/halfquad.pdf
+#  - http://mnikolova.perso.math.cnrs.fr/hq.pdf
 import numpy as np
 import numpy.fft
 import scipy.misc
@@ -12,7 +16,10 @@ def test_naive_inverse_problem_with_noise(img, make_D_func=make_D_eye):
     N = np.product(img.shape)
     h, w = img.shape
 
-    # simple blur observation matrix
+    # simple blur observation matrix.
+    # y = Ax .. observation process.
+    #  y: observed image
+    #  x: latent image
     A = np.diag([0.5]*N)
     for y in range(h):
         for x in range(w):
@@ -47,6 +54,7 @@ def test_naive_inverse_problem_with_noise(img, make_D_func=make_D_eye):
 
     # Tikhnov regularization: minimize 1/2 ||Ax-y||_2^2 + beta*||Dx||_2^2
     # => (A'A + beta D'D)x = A'y
+    #  D: regularization transform. (e.g. identity)
     beta = 0.01
     D = make_D_func(h, w)
     img_blur_noise_regularization_recover = solve2d(np.dot(A.T, A) + beta*np.dot(D.T, D), np.dot(A.T, img_blur_noise.ravel()).reshape(img.shape))
