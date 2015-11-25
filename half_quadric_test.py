@@ -67,7 +67,7 @@ def recover2d_half_quadratic(A, y, beta, Ds, dphi2_0, dphi, n_iter=10):
         x = np.linalg.solve(H, 2.0*np.dot(A.T, y))
     return x
 
-def test_naive_inverse_problem_with_noise(img, img_blur, img_blur_noise, A, D):
+def test_half_quadratic_minimization(img, img_blur, img_blur_noise, A):
     N = np.product(img.shape)
     h, w = img.shape
 
@@ -85,36 +85,9 @@ def test_naive_inverse_problem_with_noise(img, img_blur, img_blur_noise, A, D):
     # Tikhnov regularization: minimize 1/2 ||Ax-y||_2^2 + beta*||Dx||_2^2
     # => (A'A + beta D'D)x = A'y
     #  D: regularization transform. (e.g. identity)
-    beta = 0.01
-    img_blur_noise_regularization_recover = recover_tikhnov_regularization(A, img_blur_noise, beta, D)
-    print('Tikhnov error: {}'.format(mae(img_blur_noise_regularization_recover)))
-
-    fig, axs = plt.subplots(2, 5, figsize=(13, 5))
-    plot_img(axs[0, 0], img, 'org')
-    plot_img(axs[0, 1], img_blur, 'blur')
-    plot_img(axs[0, 2], img_recover, 'blur+deconv')
-    plot_diff(axs[0, 3], img_recover, img, 'deconv', mae(img_recover))
-    fig.delaxes(axs[0, 4])
-    plot_img(axs[1, 0], img_blur_noise, r'blur+noise($\sigma={:.2e}$, err={:.2e})'.format(sigma, mae(img_blur_noise)))
-    plot_img(axs[1, 1], img_blur_noise_recover, 'blur+noise+recover')
-    plot_diff(axs[1, 2], img_blur_noise_recover, img, 'blur', mae(img_blur_noise_recover))
-    plot_img(axs[1, 3], img_blur_noise_regularization_recover, r'Tikhnov($\beta={:.2e}$)'.format(beta))
-    plot_diff(axs[1, 4], img_blur_noise_regularization_recover, img, 'Tikhnov', mae(img_blur_noise_regularization_recover))
-
-def test_half_quadratic_minimization(img, img_blur, img_blur_noise, A):
-    N = np.product(img.shape)
-    h, w = img.shape
-
-    def mae(img_target):
-        return np.abs(img_target - img).mean()
-
-    # blur+recover
-    img_recover = solve2d(A, img_blur)
-    print('Blur recovery error: {}'.format(mae(img_recover)))
-
-    # noise+blur, recover
-    img_blur_noise_recover = solve2d(A, img_blur_noise)
-    print('Blur+Noise recovery error: {}'.format(mae(img_blur_noise_recover)))
+    tikhnov_beta = 0.03
+    img_tikhnov = recover_tikhnov_regularization(A, img_blur_noise, tikhnov_beta, D)
+    print('Tikhnov error: {}'.format(mae(img_tikhnov)))
 
     # Half-Quadratic minimization.
     # D0 : x finite difference.
@@ -131,21 +104,33 @@ def test_half_quadratic_minimization(img, img_blur, img_blur_noise, A):
     dphi2_0 = 0.0
     def dphi(t): return np.sign(t)
 
-    beta = 0.3
-    img_hq = recover2d_half_quadratic(A, img_blur_noise.ravel(), beta, [D0, D1], dphi2_0, dphi).reshape(img.shape)
+    hq_beta = 0.2
+    img_hq = recover2d_half_quadratic(A, img_blur_noise.ravel(), hq_beta, [D0, D1], dphi2_0, dphi).reshape(img.shape)
     print('Half-Quadratic error: {}'.format(mae(img_hq)))
 
-    fig, axs = plt.subplots(2, 5, figsize=(13, 5))
+    fig, axs = plt.subplots(3, 5, figsize=(13, 8))
     plot_img(axs[0, 0], img, 'org')
-    plot_img(axs[0, 1], img_blur, 'blur')
-    plot_img(axs[0, 2], img_recover, 'blur+deconv')
-    plot_diff(axs[0, 3], img_recover, img, 'deconv', mae(img_recover))
-    fig.delaxes(axs[0, 4])
-    plot_img(axs[1, 0], img_blur_noise, r'blur+noise($\sigma={:.2e}$, err={:.2e})'.format(sigma, mae(img_blur_noise)))
-    plot_img(axs[1, 1], img_blur_noise_recover, 'blur+noise+recover')
-    plot_diff(axs[1, 2], img_blur_noise_recover, img, 'blur', mae(img_blur_noise_recover))
-    plot_img(axs[1, 3], img_hq, r'HQ($\beta={:.2e}$)'.format(beta))
-    plot_diff(axs[1, 4], img_hq, img, 'HQ', mae(img_hq))
+    fig.delaxes(axs[1, 0])
+    fig.delaxes(axs[2, 0])
+
+    plot_img (axs[0, 1], img_blur, 'blur')
+    plot_img (axs[1, 1], img_recover, 'blur+deconv')
+    plot_diff(axs[2, 1], img_recover, img, 'deconv', mae(img_recover))
+
+    plot_img (axs[0, 2], img_blur_noise, r'blur+noise{}($\sigma={:.2e}$, err={:.2e})'.format('\n', sigma, mae(img_blur_noise)))
+    plot_img (axs[1, 2], img_blur_noise_recover, 'blur+noise+recover')
+    plot_diff(axs[2, 2], img_blur_noise_recover, img, 'blur', mae(img_blur_noise_recover))
+
+    plot_img (axs[0, 3], img_blur_noise, r'blur+noise{}($\sigma={:.2e}$, err={:.2e})'.format('\n', sigma, mae(img_blur_noise)))
+    plot_img (axs[1, 3], img_tikhnov, r'Tikhnov($\beta={:.2e}$)'.format(tikhnov_beta))
+    plot_diff(axs[2, 3], img_tikhnov, img, 'Tikhnov', mae(img_tikhnov))
+
+    plot_img (axs[0, 4], img_blur_noise, r'blur+noise{}($\sigma={:.2e}$, err={:.2e})'.format('\n', sigma, mae(img_blur_noise)))
+    plot_img (axs[1, 4], img_hq, r'HQ($\beta={:.2e}$)'.format(hq_beta))
+    plot_diff(axs[2, 4], img_hq, img, 'HQ', mae(img_hq))
+
+    for ax in axs.ravel(): ax.set_axis_off()
+    fig.suptitle('Noisy Image Recovery: Tikhnov Regularization and Half-Quadratic Minimization')
 
 if __name__=='__main__':
     # prepare image
@@ -169,7 +154,6 @@ if __name__=='__main__':
     img_blur_noise = img_blur + np.random.randn(*img.shape)*sigma
 
     matplotlib.rc('font', size=9)
-    test_naive_inverse_problem_with_noise(img, img_blur, img_blur_noise, A, D)
     test_half_quadratic_minimization(img, img_blur, img_blur_noise, A)
 
     plt.show()
