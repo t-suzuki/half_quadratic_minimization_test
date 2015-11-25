@@ -42,7 +42,7 @@ def recover_tikhnov_regularization(A, y, beta, D):
     #  D: regularization transform. (e.g. identity)
     return solve2d(np.dot(A.T, A) + beta*np.dot(D.T, D), np.dot(A.T, y.ravel()).reshape(y.shape))
 
-def recover2d_half_quadratic(A, y, beta, Ds, dphi2_0, dphi, n_iter=10):
+def recover2d_half_quadratic(A, y, beta, Ds, dphi2_0s, dphis, n_iter=10):
     # solve the nonlinear minimization problem:
     #  min_{x} J(x) = min_{x} {||Ax-y||_2^2 + beta sum_i(phi(||D_i x||_2))},
     # by minimizing the auxiliary (introducing b) functional
@@ -53,7 +53,7 @@ def recover2d_half_quadratic(A, y, beta, Ds, dphi2_0, dphi, n_iter=10):
     for i in range(n_iter):
         # 1. b := argmin_b J*(x, b) given x. (J*(b; x) is elementwise and has closed form)
         bs = []
-        for D in Ds:
+        for D, dphi2_0, dphi in zip(Ds, dphi2_0s, dphis):
             t = np.linalg.norm(np.dot(D, x))
             if t < 1.0e-5:
                 b = dphi2_0 # phi''(0+)
@@ -92,7 +92,9 @@ def test_half_quadratic_minimization(img, img_blur, img_blur_noise, A):
     # Half-Quadratic minimization.
     # D0 : x finite difference.
     # D1 : y finite difference.
+    # D2 : L2 normalization.
     D0, D1 = np.zeros((N, N)), np.zeros((N, N))
+    D2 = np.eye(N) * 0.6
     for y in range(h):
         for x in range(w):
             i = y*w + x
@@ -100,12 +102,13 @@ def test_half_quadratic_minimization(img, img_blur, img_blur_noise, A):
             if x < w - 1: D0[i, y*w + (x + 1)] = +1.0
             if y > 0:     D1[i, (y - 1)*w + x] = -1.0
             if y < h - 1: D1[i, (y + 1)*w + x] = +1.0
-    # potential function: phi(t) = |t|
-    dphi2_0 = 0.0
-    def dphi(t): return np.sign(t)
+    # potential function: phi(t) = |t| for D0, D1. phi(t) = t^2 for D2
+    dphi2_0 = [0.0, 0.0, 0.0]
+    def dphi_01(t): return np.sign(t)
+    def dphi_2(t): return 2*t
 
-    hq_beta = 0.2
-    img_hq = recover2d_half_quadratic(A, img_blur_noise.ravel(), hq_beta, [D0, D1], dphi2_0, dphi).reshape(img.shape)
+    hq_beta = 0.05
+    img_hq = recover2d_half_quadratic(A, img_blur_noise.ravel(), hq_beta, [D0, D1, D2], dphi2_0, [dphi_01, dphi_01, dphi_2]).reshape(img.shape)
     print('Half-Quadratic error: {}'.format(mae(img_hq)))
 
     fig, axs = plt.subplots(3, 5, figsize=(13, 8))
@@ -133,6 +136,8 @@ def test_half_quadratic_minimization(img, img_blur, img_blur_noise, A):
     fig.suptitle('Noisy Image Recovery: Tikhnov Regularization and Half-Quadratic Minimization')
 
 if __name__=='__main__':
+    np.random.seed(1)
+
     # prepare image
     img = scipy.misc.lena()
     img = scipy.ndimage.zoom(img, 1.0/16.0) / 255.0
@@ -150,7 +155,7 @@ if __name__=='__main__':
     img_blur = np.dot(A, img.ravel()).reshape(img.shape)
 
     # noise, blur
-    sigma = 0.02
+    sigma = 0.03
     img_blur_noise = img_blur + np.random.randn(*img.shape)*sigma
 
     matplotlib.rc('font', size=9)
