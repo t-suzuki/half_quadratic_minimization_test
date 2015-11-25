@@ -18,6 +18,8 @@ Public Domain
 # Demo
 recover noisy 2D image.
 
+![demo](https://raw.githubusercontent.com/t-suzuki/half_quadratic_minimization_test/master/doc/images/demo_result.png)
+
 # Reference
 
  * [http://www.math.hkbu.edu.hk/genearoundtheworld/pdf/rChan.pdf](http://www.math.hkbu.edu.hk/genearoundtheworld/pdf/rChan.pdf)
